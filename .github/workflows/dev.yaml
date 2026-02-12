@@ -24,10 +24,11 @@ jobs:
           docker compose down || true
           docker compose up -d --build
 
-      - name: Slack Notification
-        if: always()
-        uses: 8398a7/action-slack@v3
+      - name: Notify Slack
+        uses: slackapi/slack-github-action@v1
         with:
-          status: ${{ job.status }}
+          payload: '{"text":"Deployment finished with status: $STATUS"}'
         env:
+          STATUS: ${{ job.status }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
