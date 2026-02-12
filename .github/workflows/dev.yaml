@@ -24,14 +24,10 @@ jobs:
           docker compose down || true
           docker compose up -d --build
 
-      #  Export job status as environment variable
-      - name: Set STATUS variable
-        run: echo "STATUS=${{ job.status }}" >> $GITHUB_ENV
-
-      #  Slack notification
+      # Slack notification using curl (works reliably)
       - name: Notify Slack
-        uses: slackapi/slack-github-action@v1
-        with:
-          payload: '{"text":"Deployment finished with status: $STATUS"}'
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          STATUS=${{ job.status }}
+          curl -X POST -H 'Content-type: application/json' \
+            --data '{"text":"Deployment finished with status: '"$STATUS"'"}' \
+            ${{ secrets.SLACK_WEBHOOK_URL }}
