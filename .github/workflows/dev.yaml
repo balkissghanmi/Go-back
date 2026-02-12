@@ -24,10 +24,11 @@ jobs:
           docker compose down || true
           docker compose up -d --build
 
-      # Export job status to environment variable
+      #  Export job status as environment variable
       - name: Set STATUS variable
         run: echo "STATUS=${{ job.status }}" >> $GITHUB_ENV
 
+      #  Slack notification
       - name: Notify Slack
         uses: slackapi/slack-github-action@v1
         with:
