@@ -1,37 +1,33 @@
-name: Development CI/CD
+name: Dev CI/CD
 
 on:
   push:
     branches:
-      - main
-      - dev
+      - develop
 
 jobs:
-  dev:
+  build-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Setup Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: 1.21
+      - name: Setup Docker
+        uses: docker/setup-buildx-action@v3
 
-      - name: Install dependencies
-        run: go mod tidy
+      - name: Build Docker image
+        run: docker build -t go-crud-app:dev .
 
-      - name: Lint
-        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest && golangci-lint run
-
-      - name: Run unit tests
-        run: go test ./... -v
-
-      - name: Build binary
-        run: go build -o app ./...
-
-      - name: Deploy to Development (local container)
+      - name: Deploy with docker-compose
         run: |
-          docker build -t go-crud-dev .
-          docker run -d -p 8080:8080 --name go-crud-dev go-crud-dev
+          docker compose down || true
+          docker compose up -d --build
+
+      - name: Slack Notification
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
