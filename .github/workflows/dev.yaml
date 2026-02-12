@@ -12,7 +12,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
- 
+
       - name: Setup Docker
         uses: docker/setup-buildx-action@v3
 
@@ -24,11 +24,13 @@ jobs:
           docker compose down || true
           docker compose up -d --build
 
+      # Export job status to environment variable
+      - name: Set STATUS variable
+        run: echo "STATUS=${{ job.status }}" >> $GITHUB_ENV
+
       - name: Notify Slack
         uses: slackapi/slack-github-action@v1
         with:
           payload: '{"text":"Deployment finished with status: $STATUS"}'
         env:
-          STATUS: ${{ job.status }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-
