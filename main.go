@@ -1,21 +1,23 @@
 package main
 
 import (
-	"fmt"
+	"log"
 
-	"github.com/balkiss/go-crud/database"
 	"github.com/balkiss/go-crud/controllers"
-	"github.com/gin-gonic/gin"
+	"github.com/balkiss/go-crud/database"
 	"github.com/balkiss/go-crud/models"
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
 	// Connect to database
 	database.Connect()
-	fmt.Println("Database connected successfully!")
+	log.Println("Database connected successfully!")
 
-	// Auto-migrate User model
-	database.DB.AutoMigrate(&models.User{})
+	// Auto-migrate User model (CHECK ERROR)
+	if err := database.DB.AutoMigrate(&models.User{}); err != nil {
+		log.Fatalf("AutoMigrate failed: %v", err)
+	}
 
 	// Initialize Gin router
 	r := gin.Default()
@@ -27,6 +29,8 @@ func main() {
 	r.PUT("/users/:id", controllers.UpdateUser)
 	r.DELETE("/users/:id", controllers.DeleteUser)
 
-	// Start server on all interfaces
-	r.Run(":8080")
+	// Start server (CHECK ERROR)
+	if err := r.Run(":8080"); err != nil {
+		log.Fatalf("Failed to start server: %v", err)
+	}
 }

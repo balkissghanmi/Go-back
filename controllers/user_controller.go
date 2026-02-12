@@ -3,9 +3,9 @@ package controllers
 import (
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"github.com/balkiss/go-crud/database"
 	"github.com/balkiss/go-crud/models"
+	"github.com/gin-gonic/gin"
 )
 
 // CREATE
@@ -15,14 +15,23 @@ func CreateUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	database.DB.Create(&user)
+
+	// CHECK ERROR
+	if err := database.DB.Create(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
 	c.JSON(http.StatusCreated, user)
 }
 
 // READ ALL
 func GetUsers(c *gin.Context) {
 	var users []models.User
-	database.DB.Find(&users)
+	if err := database.DB.Find(&users).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 	c.JSON(http.StatusOK, users)
 }
 
@@ -45,12 +54,19 @@ func UpdateUser(c *gin.Context) {
 	}
 
 	var input models.User
-	c.ShouldBindJSON(&input)
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
 	user.Name = input.Name
 	user.Email = input.Email
 
-	database.DB.Save(&user)
+	if err := database.DB.Save(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
 	c.JSON(http.StatusOK, user)
 }
 
@@ -61,6 +77,11 @@ func DeleteUser(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
 	}
-	database.DB.Delete(&user)
+
+	if err := database.DB.Delete(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{"message": "User deleted"})
 }
