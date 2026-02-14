@@ -27,7 +27,6 @@ jobs:
       # Slack notification using curl (works reliably)
       - name: Notify Slack
         run: |
-          STATUS=${{ job.status }}
           curl -X POST -H 'Content-type: application/json' \
-            --data '{"text":"Deployment finished with status: '"$STATUS"'"}' \
-            ${{ secrets.SLACK_WEBHOOK_URL }}
+          --data '{"text":"Dev deployment finished"}' \
+          ${{ secrets.SLACK_WEBHOOK_URL }}
