@@ -1,33 +1,30 @@
-name: Dev CI/CD
+version: "3.9"
 
-on:
-  push:
-    branches:
-      - dev
+services:
+  postgres-master:
+    image: postgres:16
+    container_name: postgres-master
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: go_crud
+   
+    volumes:
+      - pgdata:/var/lib/postgresql/data
 
-jobs:
-  build-deploy:
-    runs-on: ubuntu-latest
+  app:
+    build: .
+    container_name: go-crud-app
+    depends_on:
+      - postgres-master
+    environment:
+      DB_HOST: postgres-master
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: go_crud
+      DB_PORT: 5432
+    ports:
+      - "8080:8080"
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Docker
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build Docker image
-        run: docker build -t go-crud-app:dev .
-
-      - name: Deploy with docker-compose
-        run: |
-          docker compose down || true
-          docker compose up -d --build
-
-      - name: Slack Notification
-        if: always()
-        uses: 8398a7/action-slack@v3
-        with:
-          status: ${{ job.status }}
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+volumes:
+  pgdata:
