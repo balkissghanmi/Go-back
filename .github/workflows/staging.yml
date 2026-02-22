@@ -1,0 +1,62 @@
+name: Staging Pipeline
+
+on:
+  push:
+    branches:
+      - staging
+
+jobs:
+  staging:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1️⃣ Checkout repository
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2️⃣ Setup Docker buildx
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 3️⃣ Build Docker image
+      - name: Build Docker image
+        run: docker build -t go-crud-app:staging .
+
+      # 4️⃣ Start staging containers
+      - name: Start staging containers
+        run: docker compose -f docker-compose.staging.yml up -d
+
+      # 5️⃣ Wait for Postgres to be ready
+      - name: Wait for Postgres
+        run: |
+          until docker exec pg-staging pg_isready -U postgres; do
+            echo "Waiting for Postgres..."
+            sleep 2
+          done
+
+      # 6️⃣ Reset database (terminate connections + drop + create)
+      - name: Reset database
+        run: |
+          docker exec pg-staging psql -U postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='go_crud_staging';"
+          docker exec pg-staging psql -U postgres -c "DROP DATABASE IF EXISTS go_crud_staging;"
+          docker exec pg-staging psql -U postgres -c "CREATE DATABASE go_crud_staging;"
+
+      # 7️⃣ Run migrations
+      - name: Run migrations
+        run: docker exec go-crud-staging ./go-crud-app migrate
+
+      # 8️⃣ Healthcheck
+      - name: Healthcheck
+        run: docker exec go-crud-staging curl -f http://localhost:8080/health
+
+      # 9️⃣ Stop containers
+      - name: Stop containers
+        run: docker compose -f docker-compose.staging.yml down
+
+      # 🔟 Slack notification (always runs)
+      - name: Notify Slack
+        if: always()
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+          --data "{\"text\":\"Staging pipeline ${{ job.status }}\"}" \
+          ${{ secrets.SLACK_WEBHOOK_URL }}
