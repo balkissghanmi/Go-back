@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout code
+      # 1️⃣ Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -24,8 +24,7 @@ jobs:
 
       # 4️⃣ Start Postgres container
       - name: Start Postgres
-        run: |
-          docker compose -f docker-compose.staging.yml up -d postgres-staging
+        run: docker compose -f docker-compose.staging.yml up -d postgres-staging
 
       # 5️⃣ Wait for Postgres to be ready
       - name: Wait for Postgres
@@ -46,7 +45,7 @@ jobs:
       - name: Run migrations
         run: |
           docker run --rm \
-            --network $(docker network ls | grep staging_default | awk '{print $1}') \
+            --network staging_default \
             -e DB_HOST=pg-staging \
             -e DB_USER=postgres \
             -e DB_PASSWORD=postgres \
