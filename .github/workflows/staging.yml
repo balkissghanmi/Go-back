@@ -10,11 +10,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout repository
+      # 1️⃣ Checkout code
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2️⃣ Setup Docker buildx
+      # 2️⃣ Setup Docker Buildx
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -22,9 +22,10 @@ jobs:
       - name: Build Docker image
         run: docker build -t go-crud-app:staging .
 
-      # 4️⃣ Start staging containers
-      - name: Start staging containers
-        run: docker compose -f docker-compose.staging.yml up -d
+      # 4️⃣ Start Postgres container
+      - name: Start Postgres
+        run: |
+          docker compose -f docker-compose.staging.yml up -d postgres-staging
 
       # 5️⃣ Wait for Postgres to be ready
       - name: Wait for Postgres
@@ -34,26 +35,42 @@ jobs:
             sleep 2
           done
 
-      # 6️⃣ Reset database (terminate connections + drop + create)
+      # 6️⃣ Reset database safely (terminate connections + drop + create)
       - name: Reset database
         run: |
           docker exec pg-staging psql -U postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='go_crud_staging';"
           docker exec pg-staging psql -U postgres -c "DROP DATABASE IF EXISTS go_crud_staging;"
           docker exec pg-staging psql -U postgres -c "CREATE DATABASE go_crud_staging;"
 
-      # 7️⃣ Run migrations
+      # 7️⃣ Run migrations inside Docker image
       - name: Run migrations
-        run: docker exec go-crud-staging ./go-crud-app migrate
+        run: |
+          docker run --rm \
+            --network $(docker network ls | grep staging_default | awk '{print $1}') \
+            -e DB_HOST=pg-staging \
+            -e DB_USER=postgres \
+            -e DB_PASSWORD=postgres \
+            -e DB_NAME=go_crud_staging \
+            -e DB_PORT=5432 \
+            go-crud-app:staging ./go-crud-app migrate
 
-      # 8️⃣ Healthcheck
+      # 8️⃣ Start Go app container for healthcheck
+      - name: Start Go app container
+        run: docker compose -f docker-compose.staging.yml up -d app
+
+      # 9️⃣ Wait a few seconds for server
+      - name: Wait for server
+        run: sleep 5
+
+      # 🔟 Healthcheck
       - name: Healthcheck
         run: docker exec go-crud-staging curl -f http://localhost:8080/health
 
-      # 9️⃣ Stop containers
+      # 1️⃣1️⃣ Stop containers
       - name: Stop containers
         run: docker compose -f docker-compose.staging.yml down
 
-      # 🔟 Slack notification (always runs)
+      # 1️⃣2️⃣ Slack notification (always runs)
       - name: Notify Slack
         if: always()
         run: |
