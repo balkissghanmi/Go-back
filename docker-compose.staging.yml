@@ -1,21 +1,32 @@
 version: "3.9"
 
 services:
+
   postgres-staging:
-    image: postgres:16
+    image: postgres:15
     container_name: pg-staging
+    restart: always
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: go_crud_staging
     ports:
-      - "5434:5432"
+      - "5433:5432"
+    volumes:
+      - pgdata_staging:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   app:
     build: .
     container_name: go-crud-staging
+    restart: always
     depends_on:
-      - postgres-staging
+      postgres-staging:
+        condition: service_healthy
     environment:
       DB_HOST: postgres-staging
       DB_USER: postgres
@@ -23,4 +34,7 @@ services:
       DB_NAME: go_crud_staging
       DB_PORT: 5432
     ports:
-      - "8081:8080"
+      - "8080:8080"
+
+volumes:
+  pgdata_staging:
